@@ -33,6 +33,7 @@
 #include "LibISDB/LibISDB/Filters/CaptionFilter.hpp"
 #include "LibISDB/LibISDB/Windows/Filters/BonDriverSourceFilter.hpp"
 #include "TSProcessor.h"
+#include "SpatialAudioRenderer.h"
 #include <atomic>
 
 
