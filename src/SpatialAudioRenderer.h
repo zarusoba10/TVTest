@@ -39,6 +39,7 @@ private:
     std::vector<short> m_Queue;
     size_t m_ReadFrame = 0;
     std::atomic<bool> m_Stop{false};
+    bool m_ObjectsActivated = false;
 };
 
 } // namespace TVTest
