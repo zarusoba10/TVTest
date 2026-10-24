@@ -245,7 +245,11 @@ bool CCoreEngine::BuildMediaViewer(const LibISDB::ViewerFilter::OpenSettings &Se
 
 bool CCoreEngine::CloseMediaViewer()
 {
-	return CloseViewer();
+	if (m_pViewer)
+		m_pViewer->SetAudioSampleCallback(nullptr);
+	const bool Result = CloseViewer();
+	m_SpatialAudioRenderer.reset();
+	return Result;
 }
 
 
