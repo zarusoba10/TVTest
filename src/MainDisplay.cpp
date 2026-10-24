@@ -81,10 +81,18 @@ bool CMainDisplay::EnableViewer(bool fEnable)
 bool CMainDisplay::BuildViewer(BYTE VideoStreamType)
 {
 	if (VideoStreamType == 0) {
-		VideoStreamType = m_App.CoreEngine.GetVideoStreamType();
+		VideoStreamType = m_VideoStreamType;
+		if (VideoStreamType == 0)
+			VideoStreamType = m_App.CoreEngine.GetVideoStreamType();
 		if (VideoStreamType == LibISDB::STREAM_TYPE_UNINITIALIZED)
 			return false;
+	} else if (VideoStreamType != LibISDB::STREAM_TYPE_INVALID) {
+		m_VideoStreamType = VideoStreamType;
 	}
+
+	if (!m_fVideoDecodeEnabled)
+		VideoStreamType = LibISDB::STREAM_TYPE_INVALID;
+
 	LPCWSTR pszVideoDecoder = nullptr;
 
 	switch (VideoStreamType) {
@@ -143,6 +151,29 @@ bool CMainDisplay::BuildViewer(BYTE VideoStreamType)
 	m_App.AudioOptions.ApplyMediaViewerOptions();
 
 	m_App.AddLog(TEXT("DirectShowの初期化を行いました。"));
+
+	return true;
+}
+
+
+bool CMainDisplay::SetVideoDecodeEnabled(bool fEnable)
+{
+	if (m_fVideoDecodeEnabled == fEnable)
+		return true;
+
+	const bool WasViewerEnabled = m_fViewerEnabled;
+	const bool OldVideoDecodeEnabled = m_fVideoDecodeEnabled;
+	m_fVideoDecodeEnabled = fEnable;
+
+	if (!BuildViewer(fEnable ? 0 : LibISDB::STREAM_TYPE_INVALID)) {
+		m_fVideoDecodeEnabled = OldVideoDecodeEnabled;
+		return false;
+	}
+
+	if (WasViewerEnabled && !EnableViewer(true)) {
+		m_fVideoDecodeEnabled = OldVideoDecodeEnabled;
+		return false;
+	}
 
 	return true;
 }
