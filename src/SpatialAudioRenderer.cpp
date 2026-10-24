@@ -210,8 +210,6 @@ void CSpatialAudioRenderer::WriteObject(
     auto *Destination = reinterpret_cast<short *>(Buffer);
     for (size_t i = 0; i < Available; i++)
         Destination[i] = pData[i * InputChannels + Channel];
-    for (size_t i = Available; i < Frames; i++)
-        Destination[i] = 0;
 }
 
 void CSpatialAudioRenderer::WriteLFEObject(
@@ -229,8 +227,6 @@ void CSpatialAudioRenderer::WriteLFEObject(
              + static_cast<float>(pData[i * InputChannels + 9])) * LFE_GAIN;
         Destination[i] = Clamp16(Value);
     }
-    for (size_t i = Available; i < Frames; i++)
-        Destination[i] = 0;
 }
 
 void CSpatialAudioRenderer::RenderThread()
