@@ -263,6 +263,8 @@ bool CMainWindow::InitializeViewer(BYTE VideoStreamType)
 		m_App.Panel.InfoPanel.UpdateItem(CInformationPanel::ITEM_VIDEODECODER);
 		m_App.Panel.InfoPanel.UpdateItem(CInformationPanel::ITEM_VIDEORENDERER);
 		m_App.Panel.InfoPanel.UpdateItem(CInformationPanel::ITEM_AUDIODEVICE);
+		m_pCore->SetCommandCheckedState(
+			CM_DISABLEVIDEODECODER, !m_Display.IsVideoDecodeEnabled());
 
 		if (fEnableViewer)
 			m_pCore->EnableViewer(true);
@@ -285,6 +287,7 @@ bool CMainWindow::FinalizeViewer()
 	m_fEnablePlayback = false;
 
 	m_pCore->SetCommandCheckedState(CM_DISABLEVIEWER, true);
+	m_pCore->SetCommandCheckedState(CM_DISABLEVIDEODECODER, false);
 
 	m_App.Panel.InfoPanel.ResetItem(CInformationPanel::ITEM_VIDEODECODER);
 	m_App.Panel.InfoPanel.ResetItem(CInformationPanel::ITEM_VIDEORENDERER);
@@ -2397,6 +2400,17 @@ bool CMainWindow::HandleCommand(CCommandManager::InvokeParameters &Params)
 
 	case CM_DISABLEVIEWER:
 		m_pCore->EnableViewer(!m_fEnablePlayback);
+		return true;
+
+	case CM_DISABLEVIDEODECODER:
+		if (!m_Display.SetVideoDecodeEnabled(!m_Display.IsVideoDecodeEnabled())) {
+			ShowMessage(
+				TEXT("映像デコードの切り替えに失敗しました。"),
+				TEXT("エラー"), MB_OK | MB_ICONERROR);
+		} else {
+			m_pCore->SetCommandCheckedState(
+				CM_DISABLEVIDEODECODER, !m_Display.IsVideoDecodeEnabled());
+		}
 		return true;
 
 	case CM_PANEL:
