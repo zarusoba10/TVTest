@@ -58,8 +58,11 @@ namespace TVTest
 
 	// CAudioOptions
 		bool ApplyMediaViewerOptions();
+		static constexpr LPCTSTR SPATIAL_AUDIO_API_MONIKER = TEXT("@TVTest:WindowsSpatialAudioAPI");
+		static constexpr LPCTSTR SPATIAL_AUDIO_API_NAME = TEXT("Windows Spatial Audio API");
 		const String & GetAudioDeviceName() const { return m_AudioDevice.FriendlyName; }
 		const String & GetAudioDeviceMoniker() const { return m_AudioDevice.MonikerName; }
+		bool IsSpatialAudioAPI() const { return StringUtility::IsEqualNoCase(m_AudioDevice.MonikerName, SPATIAL_AUDIO_API_MONIKER); }
 		LPCTSTR GetAudioFilterName() const { return StringUtility::GetCStrOrNull(m_AudioFilterName); }
 		AACDecoderType GetAACDecoder() const { return m_AACDecoder; }
 		const LibISDB::DirectShow::AudioDecoderFilter::SPDIFOptions &GetSpdifOptions() const { return m_SPDIFOptions; }
