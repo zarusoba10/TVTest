@@ -27,6 +27,7 @@ private:
     static constexpr int InputChannels = 24;
     void RenderThread();
     bool ActivateObjects();
+    bool ResetStream();
     void WriteObject(ISpatialAudioObject *pObject, const short *pData, size_t Frames, int Channel);
     void WriteLFEObject(ISpatialAudioObject *pObject, const short *pData, size_t Frames);
 
