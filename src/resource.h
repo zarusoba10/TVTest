@@ -209,7 +209,7 @@
 #define CM_ENABLETIMESHIFTRECORDING             159
 #define CM_STATUSBARRECORD                      160
 #define CM_DISABLEVIEWER                        161
-#define CM_DISABLEVIDEODECODER                   19406
+#define CM_DISABLEVIDEODECODER                   168
 #define CM_COPYIMAGE                            162
 #define CM_SAVEIMAGE                            163
 #define CM_CAPTURE                              164
@@ -534,7 +534,7 @@
 #define CM_WHEEL_ASPECTRATIO                    19404
 #define CM_WHEEL_AUDIODELAY                     19405
 
-#define CM_COMMAND_LAST                         19406
+#define CM_COMMAND_LAST                         19405
 
 #define IDS_MENU_ZOOM              20000
 #define IDS_MENU_ASPECTRATIO       20001
