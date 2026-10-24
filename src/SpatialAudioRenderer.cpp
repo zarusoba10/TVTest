@@ -124,30 +124,7 @@ bool CSpatialAudioRenderer::Initialize()
     if (FAILED(hr) || !m_Stream || FAILED(m_Stream->Start()))
         return false;
 
-    const AudioObjectType StaticTypes[] = {
-        AudioObjectType_FrontLeft, AudioObjectType_FrontRight,
-        AudioObjectType_FrontCenter, AudioObjectType_LowFrequency,
-        AudioObjectType_BackLeft, AudioObjectType_BackRight,
-        AudioObjectType_SideLeft, AudioObjectType_SideRight,
-        AudioObjectType_TopFrontLeft, AudioObjectType_TopFrontRight,
-        AudioObjectType_TopBackLeft, AudioObjectType_TopBackRight,
-    };
-    for (size_t i = 0; i < std::size(StaticTypes); i++) {
-        if (FAILED(m_Stream->ActivateSpatialAudioObject(StaticTypes[i], &m_StaticObjects[i]))) {
-            Finalize();
-            return false;
-        }
-    }
-
-    for (size_t i = 0; i < std::size(DynamicChannels); i++) {
-        if (FAILED(m_Stream->ActivateSpatialAudioObject(
-                    AudioObjectType_Dynamic, &m_DynamicObjects[i]))
-                || FAILED(m_DynamicObjects[i]->SetPosition(
-                    DynamicChannels[i].X, DynamicChannels[i].Y, DynamicChannels[i].Z))) {
-            Finalize();
-            return false;
-        }
-    }
+    m_ObjectsActivated = false;
 
     {
         std::lock_guard Lock(m_Mutex);
@@ -197,6 +174,31 @@ void CSpatialAudioRenderer::OnSamples(short *pData, size_t Length, int Channels)
     m_Queue.insert(m_Queue.end(), pData, pData + Length * InputChannels);
 }
 
+bool CSpatialAudioRenderer::ActivateObjects()
+{
+    const AudioObjectType StaticTypes[] = {
+        AudioObjectType_FrontLeft, AudioObjectType_FrontRight,
+        AudioObjectType_FrontCenter, AudioObjectType_LowFrequency,
+        AudioObjectType_BackLeft, AudioObjectType_BackRight,
+        AudioObjectType_SideLeft, AudioObjectType_SideRight,
+        AudioObjectType_TopFrontLeft, AudioObjectType_TopFrontRight,
+        AudioObjectType_TopBackLeft, AudioObjectType_TopBackRight,
+    };
+    for (size_t i = 0; i < std::size(StaticTypes); i++) {
+        if (FAILED(m_Stream->ActivateSpatialAudioObject(StaticTypes[i], &m_StaticObjects[i])))
+            return false;
+    }
+    for (size_t i = 0; i < std::size(DynamicChannels); i++) {
+        if (FAILED(m_Stream->ActivateSpatialAudioObject(
+                    AudioObjectType_Dynamic, &m_DynamicObjects[i]))
+                || FAILED(m_DynamicObjects[i]->SetPosition(
+                    DynamicChannels[i].X, DynamicChannels[i].Y, DynamicChannels[i].Z)))
+            return false;
+    }
+    m_ObjectsActivated = true;
+    return true;
+}
+
 void CSpatialAudioRenderer::WriteObject(
     ISpatialAudioObject *pObject, const short *pData, size_t Frames, int Channel)
 {
@@ -243,6 +245,11 @@ void CSpatialAudioRenderer::RenderThread()
         UINT32 Frames = 0;
         if (FAILED(m_Stream->BeginUpdatingAudioObjects(&AvailableObjects, &Frames)))
             continue;
+
+        if (!m_ObjectsActivated && !ActivateObjects()) {
+            m_Stream->EndUpdatingAudioObjects();
+            break;
+        }
 
         std::vector<short> Data(static_cast<size_t>(Frames) * InputChannels);
         {
