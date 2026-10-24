@@ -286,15 +286,22 @@ bool CSpatialAudioRenderer::ActivateObjects()
     return true;
 }
 
-void CSpatialAudioRenderer::WriteObject(
+bool CSpatialAudioRenderer::WriteObject(
     ISpatialAudioObject *pObject, const short *pData, size_t Frames, int Channel)
 {
+    if (!pObject || !pData || Channel < 0 || Channel >= InputChannels)
+        return false;
+
     BYTE *Buffer = nullptr;
     UINT32 Bytes = 0;
-    if (FAILED(pObject->GetBuffer(&Buffer, &Bytes)))
-        return;
+    if (FAILED(pObject->GetBuffer(&Buffer, &Bytes)) || !Buffer)
+        return false;
+
     const size_t SampleSize = m_FloatFormat ? sizeof(float) : sizeof(short);
     const size_t Available = std::min<size_t>(Frames, Bytes / SampleSize);
+    if (Available != Frames)
+        return false;
+
     if (m_FloatFormat) {
         auto *Destination = reinterpret_cast<float *>(Buffer);
         for (size_t i = 0; i < Available; i++)
@@ -304,17 +311,26 @@ void CSpatialAudioRenderer::WriteObject(
         for (size_t i = 0; i < Available; i++)
             Destination[i] = pData[i * InputChannels + Channel];
     }
+
+    return true;
 }
 
-void CSpatialAudioRenderer::WriteLFEObject(
+bool CSpatialAudioRenderer::WriteLFEObject(
     ISpatialAudioObject *pObject, const short *pData, size_t Frames)
 {
+    if (!pObject || !pData)
+        return false;
+
     BYTE *Buffer = nullptr;
     UINT32 Bytes = 0;
-    if (FAILED(pObject->GetBuffer(&Buffer, &Bytes)))
-        return;
+    if (FAILED(pObject->GetBuffer(&Buffer, &Bytes)) || !Buffer)
+        return false;
+
     const size_t SampleSize = m_FloatFormat ? sizeof(float) : sizeof(short);
     const size_t Available = std::min<size_t>(Frames, Bytes / SampleSize);
+    if (Available != Frames)
+        return false;
+
     if (m_FloatFormat) {
         auto *Destination = reinterpret_cast<float *>(Buffer);
         for (size_t i = 0; i < Available; i++) {
@@ -333,6 +349,8 @@ void CSpatialAudioRenderer::WriteLFEObject(
             Destination[i] = Clamp16(Value);
         }
     }
+
+    return true;
 }
 
 void CSpatialAudioRenderer::RenderThread()
@@ -382,22 +400,27 @@ void CSpatialAudioRenderer::RenderThread()
             }
         }
 
-        WriteObject(m_StaticObjects[0].Get(), Data.data(), Frames, 6);
-        WriteObject(m_StaticObjects[1].Get(), Data.data(), Frames, 7);
-        WriteObject(m_StaticObjects[2].Get(), Data.data(), Frames, 2);
-        WriteLFEObject(m_StaticObjects[3].Get(), Data.data(), Frames);
-        WriteObject(m_StaticObjects[4].Get(), Data.data(), Frames, 4);
-        WriteObject(m_StaticObjects[5].Get(), Data.data(), Frames, 5);
-        WriteObject(m_StaticObjects[6].Get(), Data.data(), Frames, 10);
-        WriteObject(m_StaticObjects[7].Get(), Data.data(), Frames, 11);
-        WriteObject(m_StaticObjects[8].Get(), Data.data(), Frames, 12);
-        WriteObject(m_StaticObjects[9].Get(), Data.data(), Frames, 13);
-        WriteObject(m_StaticObjects[10].Get(), Data.data(), Frames, 16);
-        WriteObject(m_StaticObjects[11].Get(), Data.data(), Frames, 17);
+        bool WriteOK = true;
+        WriteOK = WriteObject(m_StaticObjects[0].Get(), Data.data(), Frames, 6) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[1].Get(), Data.data(), Frames, 7) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[2].Get(), Data.data(), Frames, 2) && WriteOK;
+        WriteOK = WriteLFEObject(m_StaticObjects[3].Get(), Data.data(), Frames) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[4].Get(), Data.data(), Frames, 4) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[5].Get(), Data.data(), Frames, 5) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[6].Get(), Data.data(), Frames, 10) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[7].Get(), Data.data(), Frames, 11) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[8].Get(), Data.data(), Frames, 12) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[9].Get(), Data.data(), Frames, 13) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[10].Get(), Data.data(), Frames, 16) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[11].Get(), Data.data(), Frames, 17) && WriteOK;
         for (size_t i = 0; i < std::size(DynamicChannels); i++)
-            WriteObject(m_DynamicObjects[i].Get(), Data.data(), Frames, DynamicChannels[i].Channel);
+            WriteOK = WriteObject(
+                m_DynamicObjects[i].Get(), Data.data(), Frames,
+                DynamicChannels[i].Channel) && WriteOK;
 
         m_Stream->EndUpdatingAudioObjects();
+        if (!WriteOK)
+            ResetStream();
     }
 
     ::CoUninitialize();
