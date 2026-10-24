@@ -219,10 +219,12 @@ bool CCoreEngine::BuildMediaViewer(const LibISDB::ViewerFilter::OpenSettings &Se
 
 	if (!IsViewerOpen()) {
 		if (!BuildViewer(Settings)) {
+			m_SpatialAudioRenderer.reset();
 			return false;
 		}
 	} else {
 		if (!RebuildViewer(Settings)) {
+			m_SpatialAudioRenderer.reset();
 			return false;
 		}
 	}
