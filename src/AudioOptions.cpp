@@ -286,7 +286,7 @@ INT_PTR CAudioOptions::DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 				if (!m_AudioDevice.MonikerName.empty() && !IsSpatialAudioAPI()) {
 					for (int i = 0; i < DevEnum.GetDeviceCount(); i++) {
 						if (StringUtility::IsEqualNoCase(m_AudioDevice.MonikerName, m_AudioDeviceList[i].MonikerName)) {
-							Sel = i + 1;
+							Sel = i + 2;
 							break;
 						}
 					}
