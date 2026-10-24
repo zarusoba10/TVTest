@@ -2,6 +2,7 @@
 #include "SpatialAudioRenderer.h"
 #include <mmdeviceapi.h>
 #include <propvarutil.h>
+#include <ksmedia.h>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -33,6 +34,37 @@ constexpr DynamicChannel DynamicChannels[] = {
     {23,  2.165f, -1.238f, -1.25f},
 };
 
+
+bool IsSupportedObjectFormat(const WAVEFORMATEX *pFormat, bool *pFloatFormat)
+{
+    if (!pFormat || pFormat->nChannels != 1 || pFormat->nSamplesPerSec != 48000)
+        return false;
+
+    if (pFormat->wFormatTag == WAVE_FORMAT_PCM && pFormat->wBitsPerSample == 16) {
+        *pFloatFormat = false;
+        return true;
+    }
+    if (pFormat->wFormatTag == WAVE_FORMAT_IEEE_FLOAT && pFormat->wBitsPerSample == 32) {
+        *pFloatFormat = true;
+        return true;
+    }
+    if (pFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE
+            && pFormat->cbSize >= sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)) {
+        const auto *pExtensible = reinterpret_cast<const WAVEFORMATEXTENSIBLE *>(pFormat);
+        if (pExtensible->SubFormat == KSDATAFORMAT_SUBTYPE_PCM
+                && pFormat->wBitsPerSample == 16) {
+            *pFloatFormat = false;
+            return true;
+        }
+        if (pExtensible->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
+                && pFormat->wBitsPerSample == 32) {
+            *pFloatFormat = true;
+            return true;
+        }
+    }
+    return false;
+}
+
 template<typename T>
 short Clamp16(T Value)
 {
@@ -54,13 +86,13 @@ bool CSpatialAudioRenderer::Initialize()
 {
     Finalize();
 
-    WAVEFORMATEX Format{};
-    Format.wFormatTag = WAVE_FORMAT_PCM;
-    Format.nChannels = 1;
-    Format.nSamplesPerSec = 48000;
-    Format.wBitsPerSample = 16;
-    Format.nBlockAlign = 2;
-    Format.nAvgBytesPerSec = 96000;
+    WAVEFORMATEX DefaultFormat{};
+    DefaultFormat.wFormatTag = WAVE_FORMAT_PCM;
+    DefaultFormat.nChannels = 1;
+    DefaultFormat.nSamplesPerSec = 48000;
+    DefaultFormat.wBitsPerSample = 16;
+    DefaultFormat.nBlockAlign = 2;
+    DefaultFormat.nAvgBytesPerSec = 96000;
 
     Microsoft::WRL::ComPtr<IMMDeviceEnumerator> Enumerator;
     Microsoft::WRL::ComPtr<IMMDevice> Device;
@@ -72,8 +104,39 @@ bool CSpatialAudioRenderer::Initialize()
             || FAILED(Device->Activate(
                 __uuidof(ISpatialAudioClient), CLSCTX_INPROC_SERVER, nullptr,
                 reinterpret_cast<void **>(Client.GetAddressOf())))
-            || FAILED(Client->IsAudioObjectFormatSupported(&Format)))
+            || !Client)
         return false;
+
+    std::vector<BYTE> FormatStorage;
+    bool FloatFormat = false;
+    bool FormatSelected = false;
+    Microsoft::WRL::ComPtr<IAudioFormatEnumerator> FormatEnumerator;
+    if (SUCCEEDED(Client->GetSupportedAudioObjectFormatEnumerator(&FormatEnumerator))) {
+        for (UINT32 Index = 0; ; Index++) {
+            WAVEFORMATEX *pFormat = nullptr;
+            if (FAILED(FormatEnumerator->GetFormat(Index, &pFormat)))
+                break;
+            bool CandidateFloat = false;
+            if (!FormatSelected && IsSupportedObjectFormat(pFormat, &CandidateFloat)) {
+                const size_t FormatSize = sizeof(WAVEFORMATEX) + pFormat->cbSize;
+                FormatStorage.resize(FormatSize);
+                std::memcpy(FormatStorage.data(), pFormat, FormatSize);
+                FloatFormat = CandidateFloat;
+                FormatSelected = true;
+            }
+            ::CoTaskMemFree(pFormat);
+        }
+    }
+    if (!FormatSelected) {
+        bool CandidateFloat = false;
+        if (!SUCCEEDED(Client->IsAudioObjectFormatSupported(&DefaultFormat))
+                || !IsSupportedObjectFormat(&DefaultFormat, &CandidateFloat))
+            return false;
+        FormatStorage.resize(sizeof(DefaultFormat));
+        std::memcpy(FormatStorage.data(), &DefaultFormat, sizeof(DefaultFormat));
+        FloatFormat = CandidateFloat;
+    }
+    auto *pObjectFormat = reinterpret_cast<WAVEFORMATEX *>(FormatStorage.data());
 
     AudioObjectType StaticMask =
         static_cast<AudioObjectType>(
@@ -105,7 +168,7 @@ bool CSpatialAudioRenderer::Initialize()
         return false;
 
     SpatialAudioObjectRenderStreamActivationParams Params{};
-    Params.ObjectFormat = &Format;
+    Params.ObjectFormat = pObjectFormat;
     Params.StaticObjectTypeMask = StaticMask;
     Params.MinDynamicObjectCount = static_cast<UINT32>(std::size(DynamicChannels));
     Params.MaxDynamicObjectCount = static_cast<UINT32>(std::size(DynamicChannels));
@@ -130,6 +193,7 @@ bool CSpatialAudioRenderer::Initialize()
         return false;
 
     m_ObjectsActivated = false;
+    m_FloatFormat = FloatFormat;
 
     {
         std::lock_guard Lock(m_Mutex);
@@ -229,10 +293,17 @@ void CSpatialAudioRenderer::WriteObject(
     UINT32 Bytes = 0;
     if (FAILED(pObject->GetBuffer(&Buffer, &Bytes)))
         return;
-    const size_t Available = std::min<size_t>(Frames, Bytes / sizeof(short));
-    auto *Destination = reinterpret_cast<short *>(Buffer);
-    for (size_t i = 0; i < Available; i++)
-        Destination[i] = pData[i * InputChannels + Channel];
+    const size_t SampleSize = m_FloatFormat ? sizeof(float) : sizeof(short);
+    const size_t Available = std::min<size_t>(Frames, Bytes / SampleSize);
+    if (m_FloatFormat) {
+        auto *Destination = reinterpret_cast<float *>(Buffer);
+        for (size_t i = 0; i < Available; i++)
+            Destination[i] = static_cast<float>(pData[i * InputChannels + Channel]) / 32768.0f;
+    } else {
+        auto *Destination = reinterpret_cast<short *>(Buffer);
+        for (size_t i = 0; i < Available; i++)
+            Destination[i] = pData[i * InputChannels + Channel];
+    }
 }
 
 void CSpatialAudioRenderer::WriteLFEObject(
@@ -242,13 +313,25 @@ void CSpatialAudioRenderer::WriteLFEObject(
     UINT32 Bytes = 0;
     if (FAILED(pObject->GetBuffer(&Buffer, &Bytes)))
         return;
-    const size_t Available = std::min<size_t>(Frames, Bytes / sizeof(short));
-    auto *Destination = reinterpret_cast<short *>(Buffer);
-    for (size_t i = 0; i < Available; i++) {
-        const float Value =
-            (static_cast<float>(pData[i * InputChannels + 3])
-             + static_cast<float>(pData[i * InputChannels + 9])) * LFE_GAIN;
-        Destination[i] = Clamp16(Value);
+    const size_t SampleSize = m_FloatFormat ? sizeof(float) : sizeof(short);
+    const size_t Available = std::min<size_t>(Frames, Bytes / SampleSize);
+    if (m_FloatFormat) {
+        auto *Destination = reinterpret_cast<float *>(Buffer);
+        for (size_t i = 0; i < Available; i++) {
+            const float Value =
+                (static_cast<float>(pData[i * InputChannels + 3])
+                 + static_cast<float>(pData[i * InputChannels + 9]))
+                * LFE_GAIN / 32768.0f;
+            Destination[i] = std::clamp(Value, -1.0f, 1.0f);
+        }
+    } else {
+        auto *Destination = reinterpret_cast<short *>(Buffer);
+        for (size_t i = 0; i < Available; i++) {
+            const float Value =
+                (static_cast<float>(pData[i * InputChannels + 3])
+                 + static_cast<float>(pData[i * InputChannels + 9])) * LFE_GAIN;
+            Destination[i] = Clamp16(Value);
+        }
     }
 }
 
