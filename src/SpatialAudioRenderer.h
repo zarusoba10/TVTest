@@ -28,8 +28,8 @@ private:
     void RenderThread();
     bool ActivateObjects();
     bool ResetStream();
-    void WriteObject(ISpatialAudioObject *pObject, const short *pData, size_t Frames, int Channel);
-    void WriteLFEObject(ISpatialAudioObject *pObject, const short *pData, size_t Frames);
+    bool WriteObject(ISpatialAudioObject *pObject, const short *pData, size_t Frames, int Channel);
+    bool WriteLFEObject(ISpatialAudioObject *pObject, const short *pData, size_t Frames);
 
     Microsoft::WRL::ComPtr<ISpatialAudioObjectRenderStream> m_Stream;
     Microsoft::WRL::ComPtr<ISpatialAudioObject> m_StaticObjects[12];
