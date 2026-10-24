@@ -653,6 +653,9 @@
     <ClInclude Include="StatusView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SpatialAudioRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
