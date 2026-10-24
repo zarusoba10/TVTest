@@ -120,6 +120,11 @@ bool CSpatialAudioRenderer::Initialize()
 
     HRESULT hr = Client->ActivateSpatialAudioStream(
         &Activation, IID_PPV_ARGS(m_Stream.GetAddressOf()));
+    // Activation.blob.pBlobData points to the stack-local Params object.
+    // Prevent PropVariantClear() from trying to free that non-owned memory.
+    Activation.vt = VT_EMPTY;
+    Activation.blob.pBlobData = nullptr;
+    Activation.blob.cbSize = 0;
     ::PropVariantClear(&Activation);
     if (FAILED(hr) || !m_Stream || FAILED(m_Stream->Start()))
         return false;
