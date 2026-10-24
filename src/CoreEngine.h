@@ -259,6 +259,7 @@ namespace TVTest
 		int m_PacketBufferFillPercentage = 0;
 		UINT m_TimerResolution = 0;
 		bool m_fNoEpg = false;
+		std::unique_ptr<CSpatialAudioRenderer> m_SpatialAudioRenderer;
 
 		std::atomic<std::underlying_type_t<StatusFlag>> m_AsyncStatusUpdatedFlags{0};
 
