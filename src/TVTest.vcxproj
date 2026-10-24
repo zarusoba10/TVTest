@@ -774,6 +774,7 @@
     <ClInclude Include="StatusItems.h" />
     <ClInclude Include="StatusOptions.h" />
     <ClInclude Include="StatusView.h" />
+    <ClInclude Include="SpatialAudioRenderer.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="StreamInfo.h" />
     <ClInclude Include="StringUtility.h" />
