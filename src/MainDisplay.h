@@ -65,6 +65,8 @@ namespace TVTest
 		bool EnableViewer(bool fEnable);
 		bool IsViewerEnabled() const { return m_fViewerEnabled; }
 		bool BuildViewer(BYTE VideoStreamType = 0);
+		bool SetVideoDecodeEnabled(bool fEnable);
+		bool IsVideoDecodeEnabled() const { return m_fVideoDecodeEnabled; }
 		bool CloseViewer();
 		CViewWindow &GetViewWindow() { return m_ViewWindow; }
 		const CViewWindow &GetViewWindow() const { return m_ViewWindow; }
@@ -80,6 +82,8 @@ namespace TVTest
 	protected:
 		CAppMain &m_App;
 		bool m_fViewerEnabled = false;
+		bool m_fVideoDecodeEnabled = true;
+		BYTE m_VideoStreamType = 0;
 		CViewWindow m_ViewWindow;
 		CVideoContainerWindow m_VideoContainer;
 		CDisplayBase m_DisplayBase;
