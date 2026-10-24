@@ -294,12 +294,14 @@ INT_PTR CAudioOptions::DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 				if (Sel == 0 && !m_AudioDevice.FriendlyName.empty()) {
 					for (int i = 0; i < DevEnum.GetDeviceCount(); i++) {
 						if (StringUtility::IsEqualNoCase(m_AudioDevice.FriendlyName, m_AudioDeviceList[i].FriendlyName)) {
-							Sel = i + 1;
+							Sel = i + 2;
 							break;
 						}
 					}
 				}
 			}
+			if (SpatialSel != 0)
+				Sel = SpatialSel;
 			DlgComboBox_SetCurSel(hDlg, IDC_OPTIONS_AUDIODEVICE, Sel);
 
 			Sel = 0;
