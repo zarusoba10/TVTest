@@ -130,7 +130,8 @@ bool CMainDisplay::BuildViewer(BYTE VideoStreamType)
 	OpenSettings.AudioDevice.FriendlyName = m_App.AudioOptions.GetAudioDeviceName();
 	OpenSettings.AudioDevice.MonikerName = m_App.AudioOptions.GetAudioDeviceMoniker();
 	OpenSettings.UseNullAudioRenderer = m_App.AudioOptions.IsSpatialAudioAPI();
-	if (m_App.AudioOptions.GetAudioFilterName() != nullptr)
+	if (!m_App.AudioOptions.IsSpatialAudioAPI()
+			&& m_App.AudioOptions.GetAudioFilterName() != nullptr)
 		OpenSettings.AudioFilterList.emplace_back(m_App.AudioOptions.GetAudioFilterName());
 
 	pViewer->SetAACDecoderType(m_App.AudioOptions.GetAACDecoder());
