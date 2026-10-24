@@ -229,7 +229,15 @@ bool CCoreEngine::BuildMediaViewer(const LibISDB::ViewerFilter::OpenSettings &Se
 		m_AudioGain != 100 || m_SurroundAudioGain != 100,
 		static_cast<float>(m_AudioGain) / 100.0f, static_cast<float>(m_SurroundAudioGain) / 100.0f);
 	m_pViewer->SetDualMonoMode(m_DualMonoMode);
-	m_pViewer->SetSPDIFOptions(m_SPDIFOptions);
+	if (m_SpatialAudioRenderer) {
+		m_pViewer->SetAudioSampleCallback(m_SpatialAudioRenderer.get());
+		m_pViewer->SetSPDIFOptions({
+			LibISDB::DirectShow::AudioDecoderFilter::SPDIFMode::Disabled, 0});
+		m_pViewer->SetDownMixSurround(false);
+		m_pViewer->SetAudioGainControl(false);
+	} else {
+		m_pViewer->SetSPDIFOptions(m_SPDIFOptions);
+	}
 
 	return true;
 }
