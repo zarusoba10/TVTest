@@ -204,6 +204,16 @@ void CCoreEngine::EnableTSProcessor(bool fEnable)
 
 bool CCoreEngine::BuildMediaViewer(const LibISDB::ViewerFilter::OpenSettings &Settings)
 {
+	if (Settings.UseNullAudioRenderer) {
+		m_SpatialAudioRenderer = std::make_unique<CSpatialAudioRenderer>();
+		if (!m_SpatialAudioRenderer->Initialize()) {
+			m_SpatialAudioRenderer.reset();
+			return false;
+		}
+	} else {
+		m_SpatialAudioRenderer.reset();
+	}
+
 	if (!IsViewerOpen()) {
 		if (!BuildViewer(Settings)) {
 			return false;
