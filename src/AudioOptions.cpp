@@ -268,6 +268,8 @@ INT_PTR CAudioOptions::DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		{
 			int Sel = 0;
 			DlgComboBox_AddString(hDlg, IDC_OPTIONS_AUDIODEVICE, TEXT("デフォルト"));
+			DlgComboBox_AddString(hDlg, IDC_OPTIONS_AUDIODEVICE, SPATIAL_AUDIO_API_NAME);
+			int SpatialSel = StringUtility::IsEqualNoCase(m_AudioDevice.MonikerName, SPATIAL_AUDIO_API_MONIKER) ? 1 : 0;
 			LibISDB::DirectShow::DeviceEnumerator DevEnum;
 			if (DevEnum.EnumDevice(CLSID_AudioRendererCategory)
 					&& DevEnum.GetFilterList(&m_AudioDeviceList)) {
