@@ -2409,7 +2409,7 @@ bool CMainWindow::HandleCommand(CCommandManager::InvokeParameters &Params)
 				TEXT("エラー"), MB_OK | MB_ICONERROR);
 		} else {
 			m_pCore->SetCommandCheckedState(
-				CM_DISABLEVIDEODECODER, !m_Display.IsVideoDecodeEnabled());
+			CM_DISABLEVIDEODECODER, !m_Display.IsVideoDecodeEnabled());
 		}
 		return true;
 
