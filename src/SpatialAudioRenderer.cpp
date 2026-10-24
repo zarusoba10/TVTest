@@ -164,6 +164,24 @@ void CSpatialAudioRenderer::Finalize()
     m_ReadFrame = 0;
 }
 
+bool CSpatialAudioRenderer::ResetStream()
+{
+    if (!m_Stream)
+        return false;
+
+    const HRESULT hr = m_Stream->Reset();
+    for (auto &Object : m_StaticObjects)
+        Object.Reset();
+    for (auto &Object : m_DynamicObjects)
+        Object.Reset();
+    m_ObjectsActivated = false;
+
+    std::lock_guard Lock(m_Mutex);
+    m_Queue.clear();
+    m_ReadFrame = 0;
+    return SUCCEEDED(hr);
+}
+
 void CSpatialAudioRenderer::OnSamples(short *pData, size_t Length, int Channels)
 {
     if (!pData || Channels != InputChannels || m_Stop)
@@ -238,18 +256,29 @@ void CSpatialAudioRenderer::RenderThread()
 {
     ::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
+    unsigned int TimeoutCount = 0;
     while (!m_Stop) {
-        if (::WaitForSingleObject(m_Event, 100) != WAIT_OBJECT_0)
+        const DWORD WaitResult = ::WaitForSingleObject(m_Event, 100);
+        if (WaitResult != WAIT_OBJECT_0) {
+            if (WaitResult == WAIT_TIMEOUT && ++TimeoutCount >= 10) {
+                ResetStream();
+                TimeoutCount = 0;
+            }
             continue;
+        }
+        TimeoutCount = 0;
 
         UINT32 AvailableObjects = 0;
         UINT32 Frames = 0;
-        if (FAILED(m_Stream->BeginUpdatingAudioObjects(&AvailableObjects, &Frames)))
+        if (FAILED(m_Stream->BeginUpdatingAudioObjects(&AvailableObjects, &Frames))) {
+            ResetStream();
             continue;
+        }
 
         if (!m_ObjectsActivated && !ActivateObjects()) {
             m_Stream->EndUpdatingAudioObjects();
-            break;
+            ResetStream();
+            continue;
         }
 
         std::vector<short> Data(static_cast<size_t>(Frames) * InputChannels);
