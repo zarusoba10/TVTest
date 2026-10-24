@@ -508,13 +508,14 @@ INT_PTR CAudioOptions::DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 			{
 				FilterInfo AudioDevice;
 				int Sel = static_cast<int>(DlgComboBox_GetCurSel(hDlg, IDC_OPTIONS_AUDIODEVICE));
-				if (Sel > 0 && static_cast<unsigned int>(Sel) <= m_AudioDeviceList.size())
-					AudioDevice = m_AudioDeviceList[Sel - 1];
+				if (Sel == 1) {
+					AudioDevice.FriendlyName = SPATIAL_AUDIO_API_NAME;
+					AudioDevice.MonikerName = SPATIAL_AUDIO_API_MONIKER;
+				} else if (Sel >= 2 && static_cast<unsigned int>(Sel - 2) < m_AudioDeviceList.size()) {
+					AudioDevice = m_AudioDeviceList[Sel - 2];
+				}
 				if (!StringUtility::IsEqualNoCase(m_AudioDevice.FriendlyName, AudioDevice.FriendlyName)
-						|| (m_AudioDevice.MonikerName.empty() && Sel >= 2
-							&& StringUtility::IsEqualNoCase(AudioDevice.MonikerName, m_AudioDeviceList[Sel - 2].MonikerName))
-						|| (!m_AudioDevice.MonikerName.empty()
-							&& !StringUtility::IsEqualNoCase(m_AudioDevice.MonikerName, AudioDevice.MonikerName))) {
+						|| !StringUtility::IsEqualNoCase(m_AudioDevice.MonikerName, AudioDevice.MonikerName)) {
 					m_AudioDevice = std::move(AudioDevice);
 					SetGeneralUpdateFlag(UPDATE_GENERAL_BUILDMEDIAVIEWER);
 				}
