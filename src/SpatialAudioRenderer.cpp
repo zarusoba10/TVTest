@@ -82,6 +82,11 @@ CSpatialAudioRenderer::~CSpatialAudioRenderer()
     Finalize();
 }
 
+void CSpatialAudioRenderer::SetVolume(float Volume)
+{
+    m_Volume = std::clamp(Volume, 0.0f, 1.0f);
+}
+
 bool CSpatialAudioRenderer::Initialize()
 {
     Finalize();
@@ -248,17 +253,58 @@ bool CSpatialAudioRenderer::ResetStream()
 
 void CSpatialAudioRenderer::OnSamples(short *pData, size_t Length, int Channels)
 {
-    if (!pData || Channels != InputChannels || m_Stop)
+    if (!pData || m_Stop || Length == 0)
         return;
+
+    std::vector<short> Expanded(Length * InputChannels);
+    if (Channels == InputChannels) {
+        std::memcpy(
+            Expanded.data(), pData,
+            Expanded.size() * sizeof(short));
+    } else {
+        const auto CopyChannel = [&](int Source, int Destination) {
+            for (size_t i = 0; i < Length; i++)
+                Expanded[i * InputChannels + Destination] =
+                    pData[i * Channels + Source];
+        };
+
+        switch (Channels) {
+        case 1:
+            CopyChannel(0, 2);  // Mono -> FC
+            break;
+        case 2:
+            CopyChannel(0, 6);  // Stereo FL -> FrontLeft bed
+            CopyChannel(1, 7);  // Stereo FR -> FrontRight bed
+            break;
+        case 6:
+            // 5.1: FL, FR, FC, LFE, SiL, SiR -> corresponding BED objects.
+            CopyChannel(0, 6);
+            CopyChannel(1, 7);
+            CopyChannel(2, 2);
+            CopyChannel(3, 3);
+            CopyChannel(4, 10);
+            CopyChannel(5, 11);
+            break;
+        default:
+            return;
+        }
+    }
+
+    constexpr size_t MaxFrames = 48000;
+    const size_t StartFrame = Length > MaxFrames ? Length - MaxFrames : 0;
+    const size_t FramesToInsert = Length - StartFrame;
 
     std::lock_guard Lock(m_Mutex);
     const size_t CurrentFrames = m_Queue.size() / InputChannels - m_ReadFrame;
-    constexpr size_t MaxFrames = 48000;
-    if (CurrentFrames + Length > MaxFrames) {
-        const size_t Drop = CurrentFrames + Length - MaxFrames;
+    if (CurrentFrames + FramesToInsert > MaxFrames) {
+        const size_t Drop = CurrentFrames + FramesToInsert - MaxFrames;
         m_ReadFrame += std::min(Drop, CurrentFrames);
     }
-    m_Queue.insert(m_Queue.end(), pData, pData + Length * InputChannels);
+
+    m_Queue.insert(
+        m_Queue.end(),
+        Expanded.begin() + StartFrame * InputChannels,
+        Expanded.begin() + Length * InputChannels);
 }
 
 bool CSpatialAudioRenderer::ActivateObjects()
@@ -305,11 +351,15 @@ bool CSpatialAudioRenderer::WriteObject(
     if (m_FloatFormat) {
         auto *Destination = reinterpret_cast<float *>(Buffer);
         for (size_t i = 0; i < Available; i++)
-            Destination[i] = static_cast<float>(pData[i * InputChannels + Channel]) / 32768.0f;
+            Destination[i] = std::clamp(
+                static_cast<float>(pData[i * InputChannels + Channel])
+                    / 32768.0f * m_Volume.load(), -1.0f, 1.0f);
     } else {
         auto *Destination = reinterpret_cast<short *>(Buffer);
         for (size_t i = 0; i < Available; i++)
-            Destination[i] = pData[i * InputChannels + Channel];
+            Destination[i] = Clamp16(
+                static_cast<float>(pData[i * InputChannels + Channel])
+                    * m_Volume.load());
     }
 
     return true;
@@ -337,7 +387,7 @@ bool CSpatialAudioRenderer::WriteLFEObject(
             const float Value =
                 (static_cast<float>(pData[i * InputChannels + 3])
                  + static_cast<float>(pData[i * InputChannels + 9]))
-                * LFE_GAIN / 32768.0f;
+                * LFE_GAIN / 32768.0f * m_Volume.load();
             Destination[i] = std::clamp(Value, -1.0f, 1.0f);
         }
     } else {
@@ -372,6 +422,12 @@ void CSpatialAudioRenderer::RenderThread()
         UINT32 AvailableObjects = 0;
         UINT32 Frames = 0;
         if (FAILED(m_Stream->BeginUpdatingAudioObjects(&AvailableObjects, &Frames))) {
+            ResetStream();
+            continue;
+        }
+
+        if (AvailableObjects < std::size(DynamicChannels)) {
+            m_Stream->EndUpdatingAudioObjects();
             ResetStream();
             continue;
         }
