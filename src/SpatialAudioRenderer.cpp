@@ -445,14 +445,14 @@ void CSpatialAudioRenderer::RenderThread()
             continue;
         }
 
-        std::vector<short> Data(static_cast<size_t>(Frames) * InputChannels);
+        m_FrameBuffer.resize(static_cast<size_t>(Frames) * InputChannels);
         {
             std::lock_guard Lock(m_Mutex);
             const size_t Available = m_Queue.size() / InputChannels - m_ReadFrame;
             const size_t CopyFrames = std::min<size_t>(Frames, Available);
             if (CopyFrames != 0) {
                 std::memcpy(
-                    Data.data(),
+                    m_FrameBuffer.data(),
                     m_Queue.data() + m_ReadFrame * InputChannels,
                     CopyFrames * InputChannels * sizeof(short));
                 m_ReadFrame += CopyFrames;
@@ -464,21 +464,21 @@ void CSpatialAudioRenderer::RenderThread()
         }
 
         bool WriteOK = true;
-        WriteOK = WriteObject(m_StaticObjects[0].Get(), Data.data(), Frames, 6) && WriteOK;
-        WriteOK = WriteObject(m_StaticObjects[1].Get(), Data.data(), Frames, 7) && WriteOK;
-        WriteOK = WriteObject(m_StaticObjects[2].Get(), Data.data(), Frames, 2) && WriteOK;
-        WriteOK = WriteLFEObject(m_StaticObjects[3].Get(), Data.data(), Frames) && WriteOK;
-        WriteOK = WriteObject(m_StaticObjects[4].Get(), Data.data(), Frames, 4) && WriteOK;
-        WriteOK = WriteObject(m_StaticObjects[5].Get(), Data.data(), Frames, 5) && WriteOK;
-        WriteOK = WriteObject(m_StaticObjects[6].Get(), Data.data(), Frames, 10) && WriteOK;
-        WriteOK = WriteObject(m_StaticObjects[7].Get(), Data.data(), Frames, 11) && WriteOK;
-        WriteOK = WriteObject(m_StaticObjects[8].Get(), Data.data(), Frames, 12) && WriteOK;
-        WriteOK = WriteObject(m_StaticObjects[9].Get(), Data.data(), Frames, 13) && WriteOK;
-        WriteOK = WriteObject(m_StaticObjects[10].Get(), Data.data(), Frames, 16) && WriteOK;
-        WriteOK = WriteObject(m_StaticObjects[11].Get(), Data.data(), Frames, 17) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[0].Get(), m_FrameBuffer.data(), Frames, 6) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[1].Get(), m_FrameBuffer.data(), Frames, 7) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[2].Get(), m_FrameBuffer.data(), Frames, 2) && WriteOK;
+        WriteOK = WriteLFEObject(m_StaticObjects[3].Get(), m_FrameBuffer.data(), Frames) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[4].Get(), m_FrameBuffer.data(), Frames, 4) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[5].Get(), m_FrameBuffer.data(), Frames, 5) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[6].Get(), m_FrameBuffer.data(), Frames, 10) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[7].Get(), m_FrameBuffer.data(), Frames, 11) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[8].Get(), m_FrameBuffer.data(), Frames, 12) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[9].Get(), m_FrameBuffer.data(), Frames, 13) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[10].Get(), m_FrameBuffer.data(), Frames, 16) && WriteOK;
+        WriteOK = WriteObject(m_StaticObjects[11].Get(), m_FrameBuffer.data(), Frames, 17) && WriteOK;
         for (size_t i = 0; i < std::size(DynamicChannels); i++)
             WriteOK = WriteObject(
-                m_DynamicObjects[i].Get(), Data.data(), Frames,
+                m_DynamicObjects[i].Get(), m_FrameBuffer.data(), Frames,
                 DynamicChannels[i].Channel) && WriteOK;
 
         m_Stream->EndUpdatingAudioObjects();
