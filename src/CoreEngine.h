@@ -106,6 +106,7 @@ namespace TVTest
 		void EnableTSProcessor(bool fEnable);
 		bool IsTSProcessorEnabled() const { return m_fEnableTSProcessor; }
 		bool BuildMediaViewer(const LibISDB::ViewerFilter::OpenSettings &Settings);
+		bool IsSpatialAudioActive() const { return m_SpatialAudioRenderer != nullptr; }
 		bool CloseMediaViewer();
 		bool EnableMediaViewer(bool fEnable);
 
