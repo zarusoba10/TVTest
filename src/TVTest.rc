@@ -699,6 +699,7 @@ BEGIN
     CM_TIMESHIFTRECORDING,          "さかのぼり録画開始"
     CM_ENABLETIMESHIFTRECORDING,    "さかのぼり録画を有効にする"
     CM_DISABLEVIEWER,               "再生オフ"
+    CM_DISABLEVIDEODECODER,         "映像デコードオフ"
     CM_CAPTURE,                     "キャプチャ"
     CM_COPYIMAGE,                   "画像のコピー"
     CM_SAVEIMAGE,                   "画像の保存"
