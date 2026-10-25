@@ -415,6 +415,7 @@ void CSpatialAudioRenderer::RenderThread()
     ::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
     unsigned int TimeoutCount = 0;
+    unsigned int WriteFailureCount = 0;
     while (!m_Stop) {
         const DWORD WaitResult = ::WaitForSingleObject(m_Event, 100);
         if (WaitResult != WAIT_OBJECT_0) {
@@ -483,8 +484,14 @@ void CSpatialAudioRenderer::RenderThread()
                 DynamicChannels[i].Channel) && WriteOK;
 
         m_Stream->EndUpdatingAudioObjects();
-        if (!WriteOK)
+        if (WriteOK) {
+            WriteFailureCount = 0;
+        } else if (++WriteFailureCount >= 3) {
+            // 一時的なオブジェクト書き込み失敗ではリセットせず、
+            // 連続失敗時だけストリームを再構築してクリック音を抑える。
             ResetStream();
+            WriteFailureCount = 0;
+        }
     }
 
     ::CoUninitialize();
