@@ -240,7 +240,8 @@ bool CAudioOptions::ApplyMediaViewerOptions()
 
 	pViewer->SetAACDecoderType(m_AACDecoder);
 
-	pViewer->SetDownMixSurround(IsSpatialAudioAPI() ? false : m_fDownMixSurround);
+	pViewer->SetDownMixSurround(
+		m_App.CoreEngine.IsSpatialAudioActive() ? false : m_fDownMixSurround);
 
 	LibISDB::COMPointer<LibISDB::DirectShow::AudioDecoderFilter> AudioFilter(pViewer->GetAudioDecoderFilter());
 	if (AudioFilter) {
