@@ -22,6 +22,7 @@ public:
     bool IsInitialized() const noexcept { return m_Stream != nullptr; }
 
     void OnSamples(short *pData, size_t Length, int Channels) override;
+    void SetVolume(float Volume);
 
 private:
     static constexpr int InputChannels = 24;
@@ -40,6 +41,7 @@ private:
     std::vector<short> m_Queue;
     size_t m_ReadFrame = 0;
     std::atomic<bool> m_Stop{false};
+    std::atomic<float> m_Volume{1.0f};
     bool m_ObjectsActivated = false;
     bool m_FloatFormat = false;
 };
