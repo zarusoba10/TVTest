@@ -20,6 +20,10 @@ struct DynamicChannel {
     float X, Y, Z;
 };
 
+// 22.2chの放送順を維持する。FL/FRは100度視野の画面端に相当する
+// FLRとして動的オブジェクトへ配置し、FLc/FRcは画面内側の固定
+// FrontLeft/FrontRight BEDへ接続する。これにより、スーパーハイビジョン
+// の大画面上で画面位置に対応した定位を保つ。
 constexpr DynamicChannel DynamicChannels[] = {
     {0, -2.165f, 0.0f, -1.25f},
     {1,  2.165f, 0.0f, -1.25f},
@@ -365,6 +369,8 @@ bool CSpatialAudioRenderer::WriteObject(
     return true;
 }
 
+// LFE1/LFE2は無指向性のため合算し、-3 dB (0.707945...) で
+// 減衰して1つのLowFrequency BEDオブジェクトへ出力する。
 bool CSpatialAudioRenderer::WriteLFEObject(
     ISpatialAudioObject *pObject, const short *pData, size_t Frames)
 {
