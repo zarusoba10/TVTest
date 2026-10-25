@@ -207,34 +207,41 @@ bool CCoreEngine::BuildMediaViewer(const LibISDB::ViewerFilter::OpenSettings &Se
 	if (m_SpatialAudioRenderer && m_pViewer)
 		m_pViewer->SetAudioSampleCallback(nullptr);
 
+	LibISDB::ViewerFilter::OpenSettings ViewerSettings = Settings;
 	if (Settings.UseNullAudioRenderer) {
 		m_SpatialAudioRenderer = std::make_unique<CSpatialAudioRenderer>();
 		if (!m_SpatialAudioRenderer->Initialize()) {
+			// Spatial Audioが利用できない環境では、既定の音声レンダラーへ戻す。
 			m_SpatialAudioRenderer.reset();
-			return false;
+			ViewerSettings.UseNullAudioRenderer = false;
+			ViewerSettings.AudioDevice.FriendlyName.clear();
+			ViewerSettings.AudioDevice.MonikerName.clear();
 		}
 	} else {
 		m_SpatialAudioRenderer.reset();
 	}
 
 	if (!IsViewerOpen()) {
-		if (!BuildViewer(Settings)) {
+		if (!BuildViewer(ViewerSettings)) {
 			m_SpatialAudioRenderer.reset();
 			return false;
 		}
 	} else {
-		if (!RebuildViewer(Settings)) {
+		if (!RebuildViewer(ViewerSettings)) {
 			m_SpatialAudioRenderer.reset();
 			return false;
 		}
 	}
 
+	const float Volume = m_fMute ? 0.0f :
+		std::pow(10.0f, LevelToDeciBel(m_Volume) / 20.0f);
 	m_pViewer->SetVolume(m_fMute ? -100.0f : LevelToDeciBel(m_Volume));
 	m_pViewer->SetAudioGainControl(
 		m_AudioGain != 100 || m_SurroundAudioGain != 100,
 		static_cast<float>(m_AudioGain) / 100.0f, static_cast<float>(m_SurroundAudioGain) / 100.0f);
 	m_pViewer->SetDualMonoMode(m_DualMonoMode);
 	if (m_SpatialAudioRenderer) {
+		m_SpatialAudioRenderer->SetVolume(Volume);
 		m_pViewer->SetAudioSampleCallback(m_SpatialAudioRenderer.get());
 		m_pViewer->SetSPDIFOptions({
 			LibISDB::DirectShow::AudioDecoderFilter::SPDIFMode::Disabled, 0});
@@ -246,7 +253,6 @@ bool CCoreEngine::BuildMediaViewer(const LibISDB::ViewerFilter::OpenSettings &Se
 
 	return true;
 }
-
 
 bool CCoreEngine::CloseMediaViewer()
 {
@@ -512,6 +518,9 @@ bool CCoreEngine::SetVolume(int Volume)
 		return false;
 	if (m_pViewer != nullptr)
 		m_pViewer->SetVolume(LevelToDeciBel(Volume));
+	if (m_SpatialAudioRenderer)
+		m_SpatialAudioRenderer->SetVolume(
+			std::pow(10.0f, LevelToDeciBel(Volume) / 20.0f));
 	m_Volume = Volume;
 	m_fMute = false;
 	return true;
@@ -523,11 +532,14 @@ bool CCoreEngine::SetMute(bool fMute)
 	if (fMute != m_fMute) {
 		if (m_pViewer != nullptr)
 			m_pViewer->SetVolume(fMute ? -100.0f : LevelToDeciBel(m_Volume));
+		if (m_SpatialAudioRenderer)
+			m_SpatialAudioRenderer->SetVolume(
+				fMute ? 0.0f :
+				std::pow(10.0f, LevelToDeciBel(m_Volume) / 20.0f));
 		m_fMute = fMute;
 	}
 	return true;
 }
-
 
 bool CCoreEngine::SetAudioGainControl(int Gain, int SurroundGain)
 {
