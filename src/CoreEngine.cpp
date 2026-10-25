@@ -22,6 +22,7 @@
 #include "TVTest.h"
 #include "CoreEngine.h"
 #include "Common/DebugDef.h"
+#include <cmath>
 
 
 namespace TVTest
