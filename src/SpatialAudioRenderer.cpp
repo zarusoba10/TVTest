@@ -446,6 +446,7 @@ void CSpatialAudioRenderer::RenderThread()
         }
 
         m_FrameBuffer.resize(static_cast<size_t>(Frames) * InputChannels);
+        std::fill(m_FrameBuffer.begin(), m_FrameBuffer.end(), 0);
         {
             std::lock_guard Lock(m_Mutex);
             const size_t Available = m_Queue.size() / InputChannels - m_ReadFrame;
