@@ -395,7 +395,8 @@ bool CSpatialAudioRenderer::WriteLFEObject(
         for (size_t i = 0; i < Available; i++) {
             const float Value =
                 (static_cast<float>(pData[i * InputChannels + 3])
-                 + static_cast<float>(pData[i * InputChannels + 9])) * LFE_GAIN;
+                 + static_cast<float>(pData[i * InputChannels + 9]))
+                * LFE_GAIN * m_Volume.load();
             Destination[i] = Clamp16(Value);
         }
     }
