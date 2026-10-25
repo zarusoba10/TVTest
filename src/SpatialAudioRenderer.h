@@ -39,6 +39,7 @@ private:
     std::thread m_Thread;
     std::mutex m_Mutex;
     std::vector<short> m_Queue;
+    std::vector<short> m_FrameBuffer;
     size_t m_ReadFrame = 0;
     std::atomic<bool> m_Stop{false};
     std::atomic<float> m_Volume{1.0f};
