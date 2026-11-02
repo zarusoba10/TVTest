@@ -67,6 +67,7 @@ const CMenuOptions::MenuInfo CMenuOptions::m_DefaultMenuItemList[] =
 	{CM_CAPTUREPREVIEW,                 CM_CAPTUREPREVIEW,       CM_CAPTUREPREVIEW},
 	{MENU_ID_SEPARATOR,                 0,                       0},
 	{CM_DISABLEVIEWER,                  CM_DISABLEVIEWER,        CM_DISABLEVIEWER},
+	{CM_DISABLEVIDEODECODER,            CM_DISABLEVIDEODECODER,  CM_DISABLEVIDEODECODER},
 	{CMainMenu::SUBMENU_RESET,          IDS_MENU_RESET,          CM_RESETMENU},
 	{MENU_ID_SEPARATOR,                 0,                       0},
 	{CM_PANEL,                          CM_PANEL,                CM_PANEL},
