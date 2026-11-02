@@ -65,6 +65,10 @@ namespace TVTest
 		bool EnableViewer(bool fEnable);
 		bool IsViewerEnabled() const { return m_fViewerEnabled; }
 		bool BuildViewer(BYTE VideoStreamType = 0);
+		// 映像のデコードを行うか (false の場合は映像なしで音声のみ再生する)。
+		// 反映にはビューアの再構築 (BuildViewer) が必要
+		void SetVideoDecodeEnabled(bool fEnable) { m_fVideoDecodeEnabled = fEnable; }
+		bool IsVideoDecodeEnabled() const { return m_fVideoDecodeEnabled; }
 		bool CloseViewer();
 		CViewWindow &GetViewWindow() { return m_ViewWindow; }
 		const CViewWindow &GetViewWindow() const { return m_ViewWindow; }
@@ -80,6 +84,7 @@ namespace TVTest
 	protected:
 		CAppMain &m_App;
 		bool m_fViewerEnabled = false;
+		bool m_fVideoDecodeEnabled = true;
 		CViewWindow m_ViewWindow;
 		CVideoContainerWindow m_VideoContainer;
 		CDisplayBase m_DisplayBase;

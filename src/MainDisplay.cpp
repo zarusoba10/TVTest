@@ -85,6 +85,11 @@ bool CMainDisplay::BuildViewer(BYTE VideoStreamType)
 		if (VideoStreamType == LibISDB::STREAM_TYPE_UNINITIALIZED)
 			return false;
 	}
+
+	// 映像デコードがオフの場合は、映像なしの構成で組み立てる
+	if (!m_fVideoDecodeEnabled)
+		VideoStreamType = LibISDB::STREAM_TYPE_INVALID;
+
 	LPCWSTR pszVideoDecoder = nullptr;
 
 	switch (VideoStreamType) {

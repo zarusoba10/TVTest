@@ -58,10 +58,10 @@ namespace TVTest
 			SUBMENU_VOLUME         = 12,
 			SUBMENU_AUDIO          = 13,
 			SUBMENU_VIDEO          = 14,
-			SUBMENU_RESET          = 24,
-			SUBMENU_BAR            = 28,
-			SUBMENU_PLUGIN         = 29,
-			SUBMENU_FILTERPROPERTY = 31
+			SUBMENU_RESET          = 25,
+			SUBMENU_BAR            = 29,
+			SUBMENU_PLUGIN         = 30,
+			SUBMENU_FILTERPROPERTY = 32
 		};
 
 		CMainMenu() = default;

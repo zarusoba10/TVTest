@@ -169,6 +169,7 @@ void CAppCommand::RegisterDefaultCommands()
 			{CM_OPTIONS_RECORD, nullptr, CCommandManager::BindHandler(&CAppCommand::OptionsRecordPage, this)},
 
 			{CM_DISABLEVIEWER, TEXT("DisableViewer"), MainWindowHandler},
+			{CM_DISABLEVIDEODECODER, TEXT("DisableVideoDecoder"), MainWindowHandler},
 
 			{CM_COPYIMAGE, TEXT("CopyImage"), CCommandManager::BindHandler(&CAppCommand::CaptureCopySave, this)},
 			{CM_SAVEIMAGE, TEXT("SaveImage"), CCommandManager::BindHandler(&CAppCommand::CaptureCopySave, this)},

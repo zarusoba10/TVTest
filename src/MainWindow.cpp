@@ -2399,6 +2399,13 @@ bool CMainWindow::HandleCommand(CCommandManager::InvokeParameters &Params)
 		m_pCore->EnableViewer(!m_fEnablePlayback);
 		return true;
 
+	case CM_DISABLEVIDEODECODER:
+		m_Display.SetVideoDecodeEnabled(!m_Display.IsVideoDecodeEnabled());
+		InitializeViewer();
+		m_pCore->SetCommandCheckedState(
+			CM_DISABLEVIDEODECODER, !m_Display.IsVideoDecodeEnabled());
+		return true;
+
 	case CM_PANEL:
 		if (m_pCore->GetFullscreen()) {
 			m_Fullscreen.ShowPanel(!m_Fullscreen.IsPanelVisible());
