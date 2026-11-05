@@ -221,6 +221,7 @@ const CAccelerator::KeyInfo CAccelerator::m_DefaultAccelList[] = {
 	{CM_RECORD,         'R',       0,       false},
 	{CM_COPYIMAGE,      'C',       0,       false},
 	{CM_SAVEIMAGE,      'V',       0,       false},
+	{CM_CAPTUREHDRFRAME, 'V',      MOD_SHIFT, false},
 	{CM_PANEL,          'P',       0,       false},
 	{CM_PROGRAMGUIDE,   'E',       0,       false},
 	{CM_HOMEDISPLAY,    VK_HOME,   MOD_ALT, false},

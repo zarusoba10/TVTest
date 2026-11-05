@@ -115,6 +115,7 @@ namespace TVTest
 
 		bool DefaultCapture(CCommandManager::InvokeParameters &Params);
 		bool CaptureCopySave(CCommandManager::InvokeParameters &Params);
+		bool CaptureHDRFrame(CCommandManager::InvokeParameters &Params);
 		bool CapturePreview(CCommandManager::InvokeParameters &Params);
 		bool CaptureOptions(CCommandManager::InvokeParameters &Params);
 		bool OpenCaptureFolder(CCommandManager::InvokeParameters &Params);

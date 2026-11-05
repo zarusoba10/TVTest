@@ -216,6 +216,7 @@
 #define CM_CAPTUREPREVIEW                       165
 #define CM_CAPTUREOPTIONS                       166
 #define CM_OPENCAPTUREFOLDER                    167
+#define CM_CAPTUREHDRFRAME                      168
 #define CM_CAPTURESIZE_ORIGINAL                 170
 #define CM_CAPTURESIZE_VIEW                     171
 #define CM_CAPTURESIZE_75                       172

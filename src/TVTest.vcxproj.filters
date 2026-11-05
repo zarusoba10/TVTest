@@ -36,6 +36,9 @@
     <ClCompile Include="CaptureOptions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="HDRFrameCapture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ChannelHistory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -468,6 +471,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CaptureOptions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HDRFrameCapture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ChannelHistory.h">

@@ -22,6 +22,7 @@
 #include "TVTest.h"
 #include "AppCommand.h"
 #include "AppMain.h"
+#include "HDRFrameCapture.h"
 #include "resource.h"
 #include "Common/DebugDef.h"
 
@@ -173,6 +174,7 @@ void CAppCommand::RegisterDefaultCommands()
 			{CM_COPYIMAGE, TEXT("CopyImage"), CCommandManager::BindHandler(&CAppCommand::CaptureCopySave, this)},
 			{CM_SAVEIMAGE, TEXT("SaveImage"), CCommandManager::BindHandler(&CAppCommand::CaptureCopySave, this)},
 			{CM_CAPTURE, TEXT("CaptureImage"), CCommandManager::BindHandler(&CAppCommand::DefaultCapture, this)},
+			{CM_CAPTUREHDRFRAME, TEXT("CaptureHDRFrame"), CCommandManager::BindHandler(&CAppCommand::CaptureHDRFrame, this)},
 			{CM_CAPTUREPREVIEW, TEXT("CapturePreview"), CCommandManager::BindHandler(&CAppCommand::CapturePreview, this)},
 			{CM_CAPTUREOPTIONS, nullptr, CCommandManager::BindHandler(&CAppCommand::CaptureOptions, this)},
 			{CM_OPENCAPTUREFOLDER, nullptr, CCommandManager::BindHandler(&CAppCommand::OpenCaptureFolder, this)},
@@ -893,6 +895,195 @@ bool CAppCommand::CaptureCopySave(CCommandManager::InvokeParameters &Params)
 
 	if (!m_App.CaptureWindow.HasImage())
 		delete pImage;
+
+	return true;
+}
+
+
+bool CAppCommand::CaptureHDRFrame(CCommandManager::InvokeParameters &Params)
+{
+	if (!m_App.UICore.IsViewerEnabled())
+		return true;
+
+	LibISDB::ViewerFilter *pViewer = m_App.CoreEngine.GetFilter<LibISDB::ViewerFilter>();
+	if (pViewer == nullptr)
+		return true;
+
+	const auto ShowError =
+		[this](const String &Message) {
+			m_App.AddLog(CLogItem::LogType::Error, TEXT("HDRフレームキャプチャ : {}"), Message);
+			m_App.UICore.GetSkin()->ShowMessage(
+				Message.c_str(), TEXT("HDRフレームキャプチャ"), MB_OK | MB_ICONEXCLAMATION);
+		};
+
+	// デコーダ出力 (レンダラの手前) の次のフレームを取得する
+	LibISDB::DirectShow::VideoFrame Frame;
+	const HCURSOR hcurOld = ::SetCursor(::LoadCursor(nullptr, IDC_WAIT));
+	const HRESULT hr = pViewer->GrabVideoFrame(&Frame, 1000);
+	::SetCursor(hcurOld);
+
+	String FourCC;
+	if (Frame.Subtype.Data1 != 0) {
+		for (int i = 0; i < 4; i++) {
+			const char c = static_cast<char>((Frame.Subtype.Data1 >> (i * 8)) & 0xFF);
+			FourCC += (c >= 0x20 && c < 0x7F) ? static_cast<TCHAR>(c) : _T('?');
+		}
+	} else {
+		FourCC = TEXT("不明");
+	}
+
+	String Message;
+
+	if (hr != S_OK) {
+		switch (hr) {
+		case E_NOINTERFACE:
+			Message = TEXT("このストリームではフレームを取得できません。\n(H.265 の映像のみ対応しています)");
+			break;
+		case VFW_E_TIMEOUT:
+			Message = TEXT("フレームを取得できませんでした (タイムアウト)。\n映像が再生中か確認してください。");
+			break;
+		case E_NOTIMPL:
+			StringFormat(
+				&Message,
+				TEXT("この映像形式 ({}) には対応していません。\n(10bit の P010 / P016 のみ対応しています)"),
+				FourCC);
+			break;
+		default:
+			StringFormat(
+				&Message,
+				TEXT("フレームを取得できません (0x{:08X}、形式 {})。\nデコーダがシステムメモリ上の映像を出力していない可能性があります。"),
+				static_cast<std::uint32_t>(hr), FourCC);
+			break;
+		}
+		ShowError(Message);
+		return true;
+	}
+
+	const std::uint32_t Format = Frame.Subtype.Data1;
+	if (Format != MAKEFOURCC('P', '0', '1', '0') && Format != MAKEFOURCC('P', '0', '1', '6')) {
+		StringFormat(
+			&Message,
+			TEXT("8bit の映像 ({}) です。HDR (10bit HLG) の映像ではありません。\n通常の画像キャプチャを使用してください。"),
+			FourCC);
+		ShowError(Message);
+		return true;
+	}
+
+	HDRFrameCapture::P010Frame P010;
+	P010.pData = Frame.Data.data();
+	P010.DataSize = Frame.Data.size();
+	P010.Width = Frame.Width;
+	P010.Height = Frame.Height;
+	P010.CropLeft = Frame.CropLeft;
+	P010.CropTop = Frame.CropTop;
+	P010.Pitch = Frame.Pitch;
+	P010.CodedHeight = Frame.CodedHeight;
+
+	if (!HDRFrameCapture::IsValidFrame(P010)) {
+		StringFormat(
+			&Message,
+			TEXT("フレームのレイアウトが想定と異なります。\n{} x {} (切り出し {},{}) / ピッチ {} / 行数 {} / データ {} バイト"),
+			Frame.Width, Frame.Height, Frame.CropLeft, Frame.CropTop,
+			Frame.Pitch, Frame.CodedHeight, Frame.Data.size());
+		ShowError(Message);
+		return true;
+	}
+
+	// P010 の映像は 10bit HLG (BT.2020) とみなして cICP を付ける
+	::SetCursor(::LoadCursor(nullptr, IDC_WAIT));
+	std::vector<std::uint8_t> PNG;
+	const bool fEncoded = HDRFrameCapture::EncodePNG(P010, HDRFrameCapture::CICP_BT2020_HLG, &PNG);
+	::SetCursor(hcurOld);
+	if (!fEncoded) {
+		ShowError(TEXT("PNG への変換に失敗しました。"));
+		return true;
+	}
+
+	// 保存先 (通常のキャプチャと同じフォルダ)
+	String Folder;
+	LPCTSTR pszSaveFolder = m_App.CaptureOptions.GetSaveFolder();
+	if (pszSaveFolder[0] != _T('\0')) {
+		if (!GetAbsolutePath(String(pszSaveFolder), &Folder)) {
+			ShowError(TEXT("保存先フォルダのパスを取得できません。"));
+			return true;
+		}
+	} else {
+		if (!m_App.GetAppDirectory(&Folder)) {
+			ShowError(TEXT("保存先フォルダのパスを取得できません。"));
+			return true;
+		}
+	}
+	if (!::PathIsDirectory(Folder.c_str())) {
+		const int Result = ::SHCreateDirectoryEx(nullptr, Folder.c_str(), nullptr);
+		if (Result != ERROR_SUCCESS && Result != ERROR_ALREADY_EXISTS) {
+			StringFormat(&Message, TEXT("保存先フォルダ \"{}\" を作成できません。"), Folder);
+			ShowError(Message);
+			return true;
+		}
+	}
+
+	// 既存のファイルは上書きしない
+	SYSTEMTIME st;
+	::GetLocalTime(&st);
+	String FileName, Path;
+	HANDLE hFile = INVALID_HANDLE_VALUE;
+	for (int i = 0; i < 100; i++) {
+		if (i == 0) {
+			StringFormat(
+				&FileName, TEXT("TVTest_HDR_{:04}{:02}{:02}_{:02}{:02}{:02}.png"),
+				st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+		} else {
+			StringFormat(
+				&FileName, TEXT("TVTest_HDR_{:04}{:02}{:02}_{:02}{:02}{:02}_{}.png"),
+				st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, i);
+		}
+		Path = Folder;
+		PathUtil::Append(&Path, FileName);
+		hFile = ::CreateFile(
+			Path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+		if (hFile != INVALID_HANDLE_VALUE || ::GetLastError() != ERROR_FILE_EXISTS)
+			break;
+	}
+	if (hFile == INVALID_HANDLE_VALUE) {
+		StringFormat(&Message, TEXT("ファイル \"{}\" を作成できません。"), Path);
+		ShowError(Message);
+		return true;
+	}
+
+	bool fWritten = true;
+	const std::uint8_t *pData = PNG.data();
+	size_t Remaining = PNG.size();
+	while (Remaining > 0) {
+		const DWORD Size = static_cast<DWORD>(std::min<size_t>(Remaining, 0x1000000));
+		DWORD Written = 0;
+		if (!::WriteFile(hFile, pData, Size, &Written, nullptr) || Written != Size) {
+			fWritten = false;
+			break;
+		}
+		pData += Written;
+		Remaining -= Written;
+	}
+	::CloseHandle(hFile);
+	if (!fWritten) {
+		::DeleteFile(Path.c_str());
+		StringFormat(&Message, TEXT("ファイル \"{}\" に書き込めません。"), Path);
+		ShowError(Message);
+		return true;
+	}
+
+	// DXVA_ExtendedFormat (デコーダが通知した色情報。確認用に記録するだけで cICP の決定には使わない)
+	const DWORD Ext = Frame.ExtendedFormat;
+	m_App.AddLog(
+		TEXT("HDRフレームを保存しました : \"{}\" ({} x {}, {}, cICP=9/18/0/1, 色情報通知={} [原色 {} / 伝達特性 {} / 行列 {} / レンジ {}])"),
+		Path, Frame.Width, Frame.Height, FourCC,
+		Frame.HasColorInfo ? TEXT("あり") : TEXT("なし"),
+		Frame.HasColorInfo ? ((Ext >> 22) & 0x1F) : 0,
+		Frame.HasColorInfo ? ((Ext >> 27) & 0x1F) : 0,
+		Frame.HasColorInfo ? ((Ext >> 15) & 0x07) : 0,
+		Frame.HasColorInfo ? ((Ext >> 12) & 0x07) : 0);
+
+	StringFormat(&Message, TEXT("HDRフレームを保存しました : {}"), FileName);
+	m_App.UICore.GetSkin()->ShowNotificationBar(Message.c_str(), CNotificationBar::MessageType::Info);
 
 	return true;
 }

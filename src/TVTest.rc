@@ -701,6 +701,7 @@ BEGIN
     CM_CAPTURE,                     "キャプチャ"
     CM_COPYIMAGE,                   "画像のコピー"
     CM_SAVEIMAGE,                   "画像の保存"
+    CM_CAPTUREHDRFRAME,             "HDRフレームキャプチャ"
     CM_CAPTUREPREVIEW,              "キャプチャウィンドウ"
     CM_RESET,                       "リセット"
     CM_RESETVIEWER,                 "ビューアリセット"

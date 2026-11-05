@@ -518,6 +518,7 @@
     <ClCompile Include="CaptionPanel.cpp" />
     <ClCompile Include="Capture.cpp" />
     <ClCompile Include="CaptureOptions.cpp" />
+    <ClCompile Include="HDRFrameCapture.cpp" />
     <ClCompile Include="ChannelInput.cpp" />
     <ClCompile Include="ColorSchemeOptions.cpp" />
     <ClCompile Include="ComUtility.cpp" />
@@ -667,6 +668,7 @@
     <ClInclude Include="CaptionPanel.h" />
     <ClInclude Include="Capture.h" />
     <ClInclude Include="CaptureOptions.h" />
+    <ClInclude Include="HDRFrameCapture.h" />
     <ClInclude Include="ChannelInput.h" />
     <ClInclude Include="ColorSchemeOptions.h" />
     <ClInclude Include="ComUtility.h" />
